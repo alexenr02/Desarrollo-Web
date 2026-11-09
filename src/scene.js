@@ -3,9 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { resolveLook } from './state.js';
 import { CATALOG } from './config.js';
-import { brushedNormalTexture, paintDate, paintDial } from './textures.js';
+import { brushedNormalTexture, brushedRoughnessTexture, brushedStreakTexture, paintDate, paintDial } from './textures.js';
 
-const FRONT_CAM = new THREE.Vector3(22, 12, 148);
+const FRONT_CAM = new THREE.Vector3(5, 2, 186);
 const BACK_CAM = new THREE.Vector3(0, 8, -156);
 
 // Builds one procedural watch and keeps a single material per slot.
@@ -15,7 +15,7 @@ export function createWatch(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.96;
+  renderer.toneMappingExposure = 0.86;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
@@ -27,13 +27,13 @@ export function createWatch(canvas) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  const key = new THREE.DirectionalLight('#fff6ea', 1.05);
+  const key = new THREE.DirectionalLight('#fff6ea', 0.82);
   key.position.set(40, 60, 80);
   scene.add(key);
   const rim = new THREE.DirectionalLight('#d5e4ff', 0.55);
   rim.position.set(-50, 20, -30);
   scene.add(rim);
-  scene.environmentIntensity = 0.72;
+  scene.environmentIntensity = 0.48;
 
   const controls = new OrbitControls(camera, canvas);
   controls.enablePan = false;
@@ -45,7 +45,7 @@ export function createWatch(canvas) {
   controls.autoRotateSpeed = 0.7;
 
   const brushMap = brushedNormalTexture();
-  const mats = createMaterials(brushMap);
+  const mats = createMaterials(brushMap, brushedRoughnessTexture(), brushedStreakTexture());
   const parts = buildWatch(mats);
   scene.add(parts.root);
 
@@ -140,6 +140,9 @@ export function createWatch(canvas) {
       caseGroup.userData.rubber.visible = caseGroup.visible && !look.showBracelet;
     }
     parts.subdial.visible = Boolean(look.dial.look.sub);
+    const integrated = look.shapeId === 'octagon';
+    parts.date.visible = !integrated;
+    parts.indexAt3.visible = integrated;
 
     targets.case.set(look.caseColor);
     targets.polish.set(look.polishedColor);
@@ -207,8 +210,8 @@ export function createWatch(canvas) {
     const night = watch.night;
     mats.brushed.color.copy(current.case);
     mats.brushed.roughness = watch.rough;
-    mats.brushed.normalScale.set(0.45 * watch.brush, 0.45 * watch.brush);
-    mats.brushed.anisotropy = 0.65 * watch.brush;
+    mats.brushed.normalScale.set(0.8 * watch.brush, 0.8 * watch.brush);
+    mats.brushed.anisotropy = 0.85 * watch.brush;
     mats.polished.color.copy(current.polish);
     mats.polished.roughness = watch.polishRough;
     mats.bezel.color.copy(current.bezel);
@@ -230,8 +233,8 @@ export function createWatch(canvas) {
     mats.subHand.color.copy(current.subHand);
     mats.dial.color.setScalar(THREE.MathUtils.lerp(1, 0.42, night));
     scene.background.copy(new THREE.Color('#e7e4dc')).lerp(new THREE.Color('#101216'), night);
-    scene.environmentIntensity = THREE.MathUtils.lerp(0.72, 0.12, night);
-    key.intensity = THREE.MathUtils.lerp(1.05, 0.12, night);
+    scene.environmentIntensity = THREE.MathUtils.lerp(0.48, 0.1, night);
+    key.intensity = THREE.MathUtils.lerp(0.82, 0.1, night);
     rim.intensity = THREE.MathUtils.lerp(0.55, 0.04, night);
   }
 
@@ -309,16 +312,18 @@ export function createWatch(canvas) {
   };
 }
 
-function createMaterials(brushMap) {
+function createMaterials(brushMap, roughMap, streakMap) {
   const brushed = new THREE.MeshPhysicalMaterial({
     color: '#c5c8cc',
-    metalness: 1,
-    roughness: 0.36,
-    anisotropy: 0.65,
+    map: streakMap,
+    metalness: 0.72,
+    roughness: 0.5,
+    roughnessMap: roughMap,
+    anisotropy: 0.9,
     anisotropyRotation: Math.PI / 2,
     normalMap: brushMap,
-    normalScale: new THREE.Vector2(0.45, 0.45),
-    envMapIntensity: 0.72,
+    normalScale: new THREE.Vector2(0.9, 0.9),
+    envMapIntensity: 0.4,
   });
   const polished = new THREE.MeshPhysicalMaterial({
     color: '#e7e9eb',
@@ -380,6 +385,8 @@ function createMaterials(brushMap) {
     sub: new THREE.MeshStandardMaterial({ color: '#0e1a2b', roughness: 0.55 }),
     subHand: new THREE.MeshStandardMaterial({ color: '#f0ddb0', metalness: 0.6, roughness: 0.3 }),
     date: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+    gasket: new THREE.MeshStandardMaterial({ color: '#121418', roughness: 0.62, metalness: 0.35 }),
+    slot: new THREE.MeshStandardMaterial({ color: '#14161a', roughness: 0.45, metalness: 0.7 }),
   };
 }
 
@@ -404,6 +411,8 @@ function buildWatch(mats) {
     cases,
     subdial: face.subdial,
     subHand: face.subHand,
+    date: face.date,
+    indexAt3: face.indexAt3,
     hands: face.hands,
     balance: movement.balance,
     rotor: movement.rotor,
@@ -413,31 +422,58 @@ function buildWatch(mats) {
 
 function buildCase(spec, mats) {
   const group = new THREE.Group();
-  const body = new THREE.Mesh(extrude(caseOutline(spec), 11), mats.brushed);
+  const bodyDepth = spec.integrated ? 8.6 : 11;
+  const bodySpec = spec.integrated ? { ...spec, radius: spec.radius * 0.94 } : spec;
+  const body = new THREE.Mesh(extrude(caseOutline(bodySpec), bodyDepth), mats.brushed);
   group.add(body);
 
   // Octagon uses the case metal for the bezel. The other shapes use the insert color.
+  const bezelDepth = spec.integrated ? 3.4 : 2.3;
   const bezelOutline = spec.kind === 'polygon'
     ? polygonRing(spec.sides, spec.bezelOuter, spec.bezelInner)
     : ringShape(spec.bezelOuter, spec.bezelInner);
-  const bezel = new THREE.Mesh(extrude(bezelOutline, 2.3), spec.bezelFollowsCase ? mats.brushed : mats.bezel);
-  bezel.position.z = 5.6;
+  const bezel = new THREE.Mesh(extrude(bezelOutline, bezelDepth), spec.bezelFollowsCase ? mats.brushed : mats.bezel);
+  bezel.position.z = spec.integrated ? bodyDepth / 2 + bezelDepth / 2 - 0.35 : 5.6;
   group.add(bezel);
 
-  const lip = new THREE.Mesh(new THREE.TorusGeometry(spec.opening + 0.08, 0.42, 10, 64), mats.polished);
-  lip.position.z = 5.15;
-  group.add(lip);
+  if (spec.integrated) {
+    const bezelTop = bezel.position.z + bezelDepth / 2;
+    // The hole must stay inside the flats. A circle larger than the apothem fills the dial.
+    const rimOuter = spec.bezelOuter + 0.22;
+    const rimInner = rimOuter * Math.cos(Math.PI / spec.sides) - 0.42;
+    const chamfer = new THREE.Mesh(
+      extrude(polygonRing(spec.sides, rimOuter, rimInner), 0.55),
+      mats.polished,
+    );
+    chamfer.position.z = bezelTop - 0.7;
+    group.add(chamfer);
+    addScrews(group, spec, mats.polished, mats.slot, bezelTop - 0.08);
+    const gasket = new THREE.Mesh(new THREE.TorusGeometry(spec.bezelInner - 0.15, 0.28, 8, 64), mats.gasket);
+    gasket.position.z = bezel.position.z - 0.2;
+    group.add(gasket);
+  } else {
+    const lip = new THREE.Mesh(new THREE.TorusGeometry(spec.opening + 0.08, 0.42, 10, 64), mats.polished);
+    lip.position.z = 5.15;
+    group.add(lip);
+    addLugs(group, mats.brushed, spec.lugReach);
+    addTicks(group, (spec.bezelOuter + spec.bezelInner) / 2, 7.15, mats.tick);
+  }
 
-  addLugs(group, mats.brushed, spec.lugReach);
-  addTicks(group, (spec.bezelOuter + spec.bezelInner) / 2, 7.15, mats.tick);
-
+  const wall = spec.kind === 'polygon'
+    ? spec.bezelOuter * Math.cos(Math.PI / spec.sides)
+    : spec.radius;
   const crown = makeCrown(mats.brushed, mats.polished);
-  crown.position.x = spec.crownShift || 0;
+  crown.position.x = wall + 0.05;
   group.add(crown);
 
-  const strapStart = spec.lugReach + 5.3;
-  const bracelet = buildBracelet(mats.brushed, mats.polished, strapStart);
-  const rubber = buildRubber(mats.rubber, mats.polished, strapStart);
+  const flat = spec.kind === 'polygon'
+    ? spec.bezelOuter * Math.cos(Math.PI / spec.sides)
+    : spec.lugReach;
+  const strapStart = spec.integrated ? flat + 2.6 : spec.lugReach + 5.3;
+  const bracelet = spec.integrated
+    ? buildIntegratedBracelet(mats.brushed, flat)
+    : buildBracelet(mats.brushed, mats.polished, strapStart);
+  const rubber = buildRubber(mats.rubber, mats.polished, strapStart, spec.integrated ? 26 : 18);
   rubber.visible = false;
   group.add(bracelet, rubber);
   group.userData.bracelet = bracelet;
@@ -445,7 +481,7 @@ function buildCase(spec, mats) {
 
   // Open caseback. A glass disc here goes opaque in WebGL and hides the movement.
   const backLip = new THREE.Mesh(new THREE.TorusGeometry(spec.opening - 0.35, 0.4, 10, 48), mats.polished);
-  backLip.position.z = -5.7;
+  backLip.position.z = spec.integrated ? -bodyDepth / 2 - 0.15 : -5.7;
   group.add(backLip);
   return group;
 }
@@ -457,21 +493,21 @@ function buildFace(mats) {
   group.add(dial);
 
   const hands = {
-    hour: makeHand(7.2, 1.15, 0.28, mats.frame, 0.4),
-    minute: makeHand(10.4, 0.85, 0.22, mats.frame, 0.2),
-    second: makeHand(12.4, 0.28, 0.16, mats.second, 3.2),
+    hour: makeHand(6.6, 1.35, 0.32, mats.polished, 0.55),
+    minute: makeHand(10.2, 1.05, 0.26, mats.polished, 0.35),
+    second: makeHand(12.2, 0.16, 0.1, mats.second, 3.4),
   };
   hands.hour.position.z = 5.05;
   hands.minute.position.z = 5.35;
   hands.second.position.z = 5.65;
+  addHandStripe(hands.hour, 6.6, mats.lume);
+  addHandStripe(hands.minute, 10.2, mats.lume);
   group.add(hands.hour, hands.minute, hands.second);
 
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.35, 20), mats.polished);
   cap.rotation.x = Math.PI / 2;
   cap.position.z = 5.9;
   group.add(cap);
-
-  addIndices(group, mats);
 
   const date = new THREE.Group();
   const dateFrame = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 2.7), mats.polished);
@@ -491,11 +527,11 @@ function buildFace(mats) {
   subdial.visible = false;
   group.add(subdial);
 
-  const crystal = new THREE.Mesh(crystalGeo(15.7), mats.crystal);
-  crystal.position.z = 6.7;
+  const crystal = new THREE.Mesh(crystalGeo(15.35), mats.crystal);
+  crystal.position.z = 6.55;
   group.add(crystal);
 
-  return { group, hands, subdial, subHand };
+  return { group, hands, subdial, subHand, date, indexAt3: addIndices(group, mats) };
 }
 
 function buildMovement(mats) {
@@ -592,11 +628,11 @@ function roundedLinkGeometry(width, height, depth, radius) {
   return geo;
 }
 
-function buildRubber(rubberMat, metalMat, start) {
+function buildRubber(rubberMat, metalMat, start, width = 18) {
   const group = new THREE.Group();
   for (const dir of [-1, 1]) {
     for (let i = 0; i < 5; i++) {
-      const segment = new THREE.Mesh(new THREE.BoxGeometry(18, 6.2, 3.1), rubberMat);
+      const segment = new THREE.Mesh(new THREE.BoxGeometry(width, 6.2, 3.1), rubberMat);
       segment.position.set(0, dir * (start + i * 6.0), -0.15 - i * 0.45);
       segment.rotation.x = dir * i * 0.05;
       group.add(segment);
@@ -643,39 +679,164 @@ function addTicks(group, radius, z, material) {
 }
 
 function addIndices(group, mats) {
+  const at3 = new THREE.Group();
+  at3.visible = false;
+  group.add(at3);
   for (let i = 0; i < 12; i++) {
-    if (i === 3) continue;
     const angle = Math.PI / 2 - (i / 12) * Math.PI * 2;
-    const length = i % 3 === 0 ? 3.5 : 2.15;
-    const marker = new THREE.Mesh(new THREE.BoxGeometry(i % 3 === 0 ? 1.15 : 0.72, length, 0.32), mats.frame);
-    const radius = 12.7;
-    marker.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 4.9);
-    marker.rotation.z = angle - Math.PI / 2;
-    group.add(marker);
+    const parent = i === 3 ? at3 : group;
+    const length = 4.35;
+    const twins = i === 0 ? [-0.58, 0.58] : [0];
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const tx = -dy;
+    const ty = dx;
+    for (const side of twins) {
+      const marker = new THREE.Mesh(new THREE.BoxGeometry(0.42, length, 0.28), mats.frame);
+      const radius = 12.35;
+      marker.position.set(dx * radius + tx * side, dy * radius + ty * side, 4.95);
+      marker.rotation.z = angle - Math.PI / 2;
+      parent.add(marker);
 
-    const lume = new THREE.Mesh(new THREE.BoxGeometry(0.42, length * 0.62, 0.16), mats.lume);
-    lume.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 5.12);
-    lume.rotation.z = marker.rotation.z;
-    group.add(lume);
+      const lume = new THREE.Mesh(new THREE.BoxGeometry(0.16, length * 0.72, 0.1), mats.lume);
+      lume.position.set(marker.position.x, marker.position.y, 5.14);
+      lume.rotation.z = marker.rotation.z;
+      parent.add(lume);
+    }
   }
+  return at3;
+}
+
+function addHandStripe(hand, length, material) {
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.16, length * 0.68, 0.08), material);
+  stripe.position.set(0, length * 0.36, 0.16);
+  hand.add(stripe);
 }
 
 function makeHand(length, width, depth, material, tail) {
-  const geo = new THREE.BoxGeometry(width, length + tail, depth);
-  geo.translate(0, length / 2 - tail / 2, 0);
+  if (width < 0.4) {
+    const geo = new THREE.BoxGeometry(width, length + tail, depth);
+    geo.translate(0, length / 2 - tail / 2, 0);
+    return new THREE.Mesh(geo, material);
+  }
+  const shape = new THREE.Shape();
+  shape.moveTo(0, -tail);
+  shape.lineTo(width * 0.5, length * 0.12);
+  shape.lineTo(width * 0.16, length * 0.82);
+  shape.lineTo(0, length);
+  shape.lineTo(-width * 0.16, length * 0.82);
+  shape.lineTo(-width * 0.5, length * 0.12);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.05,
+    bevelSize: 0.04,
+    bevelSegments: 1,
+    curveSegments: 2,
+  });
+  geo.translate(0, 0, -depth / 2);
+  geo.computeVertexNormals();
   return new THREE.Mesh(geo, material);
 }
 
 function makeCrown(brushed, polished) {
   const group = new THREE.Group();
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 2.4, 16), polished);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 1.5, 16), polished);
   stem.rotation.z = Math.PI / 2;
-  stem.position.x = 20.8;
-  const knob = new THREE.Mesh(new THREE.CylinderGeometry(2.05, 2.05, 2.5, 22), brushed);
+  stem.position.x = 0.75;
+  const knob = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 2.15, 28), brushed);
   knob.rotation.z = Math.PI / 2;
-  knob.position.x = 22.8;
+  knob.position.x = 2.35;
   group.add(stem, knob);
+  for (let i = 0; i < 5; i++) {
+    const groove = new THREE.Mesh(new THREE.CylinderGeometry(1.68, 1.68, 0.1, 28), polished);
+    groove.rotation.z = Math.PI / 2;
+    groove.position.x = 1.55 + i * 0.38;
+    group.add(groove);
+  }
   return group;
+}
+
+function addScrews(group, spec, polished, slotMat, z) {
+  const start = -Math.PI / 2 + Math.PI / spec.sides;
+  const radius = spec.bezelOuter * 0.86;
+  const recessGeo = new THREE.CylinderGeometry(1.28, 1.28, 0.22, 18);
+  recessGeo.rotateX(Math.PI / 2);
+  const headGeo = new THREE.CylinderGeometry(1.02, 1.08, 0.42, 6);
+  headGeo.rotateX(Math.PI / 2);
+  const slotGeo = new THREE.BoxGeometry(1.35, 0.14, 0.08);
+  for (let i = 0; i < spec.sides; i++) {
+    const angle = start + (i / spec.sides) * Math.PI * 2;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    const recess = new THREE.Mesh(recessGeo, slotMat);
+    recess.position.set(x, y, z - 0.08);
+    const screw = new THREE.Mesh(headGeo, polished);
+    screw.position.set(x, y, z + 0.18);
+    screw.rotation.z = angle;
+    const slot = new THREE.Mesh(slotGeo, slotMat);
+    slot.position.set(x, y, z + 0.26);
+    slot.rotation.z = angle + 0.5;
+    group.add(recess, screw, slot);
+  }
+}
+
+// Wide, flat, three-row bracelet. The first link sits on the octagon flat.
+function buildIntegratedBracelet(brushed, flat) {
+  const group = new THREE.Group();
+  const outerW = 8.4;
+  const centerW = 9.6;
+  const gap = 0.42;
+  const linkH = 2.72;
+  const pitch = 2.86;
+  const outerX = centerW / 2 + gap + outerW / 2;
+  const outerGeo = flatLinkGeometry(outerW, linkH, 1.85, 0.28);
+  const centerGeo = flatLinkGeometry(centerW, linkH - 0.06, 1.75, 0.24);
+  const endH = 3.6;
+  const endOuterGeo = flatLinkGeometry(outerW, endH, 2.0, 0.28);
+  const endCenterGeo = flatLinkGeometry(centerW, endH - 0.06, 1.9, 0.24);
+  const endY = flat + endH / 2 - 0.12;
+  const first = endY + endH / 2 + 0.14 + linkH / 2;
+
+  for (const dir of [-1, 1]) {
+    const end = new THREE.Group();
+    end.position.set(0, dir * endY, 0.02);
+    const endLeft = new THREE.Mesh(endOuterGeo, brushed);
+    endLeft.position.x = -outerX;
+    const endRight = new THREE.Mesh(endOuterGeo, brushed);
+    endRight.position.x = outerX;
+    const endMid = new THREE.Mesh(endCenterGeo, brushed);
+    end.add(endLeft, endMid, endRight);
+    group.add(end);
+    for (let i = 0; i < 7; i++) {
+      const row = new THREE.Group();
+      row.position.set(0, dir * (first + i * pitch), -i * 0.012);
+      row.rotation.x = dir * i * 0.008;
+      const left = new THREE.Mesh(outerGeo, brushed);
+      left.position.x = -outerX;
+      const right = new THREE.Mesh(outerGeo, brushed);
+      right.position.x = outerX;
+      const mid = new THREE.Mesh(centerGeo, brushed);
+      row.add(left, mid, right);
+      group.add(row);
+    }
+  }
+  return group;
+}
+
+function flatLinkGeometry(width, height, depth, radius) {
+  const geo = new THREE.ExtrudeGeometry(roundedRect(width, height, radius), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.08,
+    bevelSize: 0.07,
+    bevelSegments: 1,
+    curveSegments: 4,
+  });
+  geo.translate(0, 0, -depth / 2);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 function crystalGeo(radius) {

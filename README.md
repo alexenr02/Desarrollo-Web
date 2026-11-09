@@ -56,7 +56,7 @@ To add a dial, append an object under `dials` with a unique `id`, a `swatch`, an
 
 ## Sharper bracelet and dial
 
-The bracelet in `buildBracelet` is a three-row link. Every row uses the case metal, the center link sits proud of the outer two, and a pin fills the gap. Each link is a rounded extrusion shared across the bracelet, so the edges catch light instead of reading as flat slabs. Change `roundedLinkGeometry` sizes, `pitch`, or the row count there.
+The octagon is the integrated case: a wide eight-sided bezel, a hex screw on each corner, and a flat three-row bracelet that starts on the top and bottom flats. `buildIntegratedBracelet` sets the link width, height, and pitch. The diver and chrono keep `buildBracelet`, the narrower rounded links.
 
 The dial print is a 2048 canvas in `createWatch` (`dialCanvas.width`). `paintDial` draws the sunburst, the minute track, and the words in units of that width, so raising the canvas (3072, 4096) stays sharp when you crop in. `anisotropy` is set to the GPU maximum so the texture holds up at an angle. Indices and hands stay meshes; they are what throws the shadow and the lume.
 

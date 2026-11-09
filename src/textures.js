@@ -22,7 +22,58 @@ export function brushedNormalTexture() {
   ctx.putImageData(image, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(6, 6);
+  texture.repeat.set(3, 18);
+  texture.colorSpace = THREE.NoColorSpace;
+  return texture;
+}
+
+// Fine horizontal lines. Multiplied by the metal color so the grain stays visible.
+export function brushedStreakTexture() {
+  const width = 64;
+  const height = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(width, height);
+  for (let y = 0; y < height; y++) {
+    const stripe = y % 3 === 0 ? 145 : 198 + (y % 5) * 2;
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const n = stripe + (Math.random() - 0.5) * 12;
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = Math.max(0, Math.min(255, n));
+      image.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 28);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Horizontal streaks. Multiplied by the metal roughness so polished stays even.
+export function brushedRoughnessTexture() {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    const band = 232 + Math.sin(y * 0.85) * 18 + (Math.random() - 0.5) * 10;
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const n = Math.max(0, Math.min(255, band + (Math.random() - 0.5) * 8));
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = n;
+      image.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 10);
   texture.colorSpace = THREE.NoColorSpace;
   return texture;
 }
@@ -41,17 +92,19 @@ export function paintDial(canvas, top, bottom, look) {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, w, w);
 
-  // Sunburst. Alternating rays read as brushed lacquer instead of a flat fill.
-  ctx.save();
-  ctx.translate(c, c);
-  ctx.globalCompositeOperation = 'soft-light';
-  const rays = 160;
-  for (let i = 0; i < rays; i++) {
-    ctx.rotate((Math.PI * 2) / rays);
-    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
-    ctx.fillRect(-w * 0.0014, 0, w * 0.0028, c);
+  // Sunburst on plain dials. The gridded dial stays an even field of squares.
+  if (look.pattern !== 'grid') {
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.globalCompositeOperation = 'soft-light';
+    const rays = 160;
+    for (let i = 0; i < rays; i++) {
+      ctx.rotate((Math.PI * 2) / rays);
+      ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+      ctx.fillRect(-w * 0.0014, 0, w * 0.0028, c);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   const vignette = ctx.createRadialGradient(c, c, c * 0.42, c, c, c * 0.72);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
@@ -61,17 +114,20 @@ export function paintDial(canvas, top, bottom, look) {
   ctx.arc(c, c, c, 0, Math.PI * 2);
   ctx.fill();
 
+  const grid = look.pattern === 'grid';
   ctx.save();
   ctx.translate(c, c);
   ctx.strokeStyle = look.print;
   ctx.lineCap = 'butt';
   ctx.lineWidth = w * 0.0014;
   ctx.beginPath();
-  ctx.arc(0, 0, w * 0.462, 0, Math.PI * 2);
+  ctx.arc(0, 0, w * (grid ? 0.455 : 0.462), 0, Math.PI * 2);
   ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(0, 0, w * 0.398, 0, Math.PI * 2);
-  ctx.stroke();
+  if (!grid) {
+    ctx.beginPath();
+    ctx.arc(0, 0, w * 0.398, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * Math.PI * 2 - Math.PI / 2;
     const major = i % 5 === 0;
@@ -79,11 +135,11 @@ export function paintDial(canvas, top, bottom, look) {
     const dy = Math.sin(angle);
     const tx = -dy;
     const ty = dx;
-    const outer = w * 0.458;
-    const inner = w * (major ? 0.404 : 0.44);
-    ctx.lineWidth = major ? w * 0.0034 : w * 0.00135;
+    const outer = w * (grid ? 0.45 : 0.458);
+    const inner = w * (grid ? (major ? 0.42 : 0.436) : (major ? 0.404 : 0.44));
+    ctx.lineWidth = major ? w * (grid ? 0.0022 : 0.0034) : w * 0.00135;
     // Five-minute marks are a railroad pair, the way a printed dial is engraved.
-    const offsets = major ? [-w * 0.0042, w * 0.0042] : [0];
+    const offsets = !grid && major ? [-w * 0.0042, w * 0.0042] : [0];
     for (const off of offsets) {
       ctx.beginPath();
       ctx.moveTo(dx * inner + tx * off, dy * inner + ty * off);
@@ -93,12 +149,34 @@ export function paintDial(canvas, top, bottom, look) {
   }
   ctx.restore();
 
+  if (look.pattern === 'grid') {
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.beginPath();
+    ctx.arc(0, 0, w * 0.4, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = Math.max(1, w * 0.001);
+    const step = w * 0.024;
+    for (let p = -w * 0.4; p <= w * 0.4; p += step) {
+      ctx.beginPath();
+      ctx.moveTo(p, -w * 0.4);
+      ctx.lineTo(p, w * 0.4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.4, p);
+      ctx.lineTo(w * 0.4, p);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   ctx.fillStyle = look.print;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  drawTracked(ctx, look.title, c, w * 0.325, w * 0.052, '600', 'Georgia, "Times New Roman", serif', 0.22);
-  drawTracked(ctx, look.line, c, w * 0.385, w * 0.02, '500', '"Segoe UI", sans-serif', 0.34);
-  drawTracked(ctx, look.foot, c, w * 0.7, w * 0.018, '500', '"Segoe UI", sans-serif', 0.42);
+  drawTracked(ctx, look.title, c, w * (grid ? 0.3 : 0.325), w * (grid ? 0.03 : 0.052), '600', 'Georgia, "Times New Roman", serif', grid ? 0.16 : 0.22);
+  drawTracked(ctx, look.line, c, w * (grid ? 0.34 : 0.385), w * (grid ? 0.014 : 0.02), '500', '"Segoe UI", sans-serif', 0.34);
+  drawTracked(ctx, look.foot, c, w * (grid ? 0.63 : 0.7), w * (grid ? 0.014 : 0.018), '500', '"Segoe UI", sans-serif', 0.42);
 }
 
 function drawTracked(ctx, text, x, y, size, weight, family, trackingEm) {

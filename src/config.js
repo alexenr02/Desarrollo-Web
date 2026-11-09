@@ -9,12 +9,13 @@ export const CATALOG = {
       "family": "octagon",
       "kind": "polygon",
       "sides": 8,
-      "radius": 22,
-      "opening": 16.15,
-      "bezelOuter": 21.15,
-      "bezelInner": 16.4,
-      "lugReach": 21.2,
-      "crownShift": 1.4,
+      "radius": 24,
+      "opening": 16.2,
+      "bezelOuter": 23.6,
+      "bezelInner": 16.45,
+      "lugReach": 22.6,
+      "crownShift": 0,
+      "integrated": true,
       "bezelFollowsCase": true,
       "bezels": [
         {
@@ -229,6 +230,7 @@ export const CATALOG = {
         "frameRough": 0.24,
         "frameCoat": 0.9,
         "title": "BLACK",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#e8eaed"
@@ -246,6 +248,7 @@ export const CATALOG = {
         "lume": "#b6d6ea",
         "print": "#eef3f8",
         "title": "BLUE",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#eef3f8",
@@ -268,6 +271,7 @@ export const CATALOG = {
         "lume": "#b8dcb4",
         "print": "#e6efe6",
         "title": "GREEN",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#e6efe6"
@@ -285,6 +289,7 @@ export const CATALOG = {
         "lume": "#efe6e7",
         "print": "#b60b4c",
         "title": "PINK",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#b60b4c"
@@ -302,6 +307,7 @@ export const CATALOG = {
         "lume": "#d4e5f1",
         "print": "#93b9da",
         "title": "LIGHT GREEN",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#93b9da"
@@ -319,6 +325,7 @@ export const CATALOG = {
         "lume": "#beb783",
         "print": "#5d6165",
         "title": "AQUA",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#5d6165",
@@ -341,6 +348,7 @@ export const CATALOG = {
         "lume": "#f4f5f2",
         "print": "#d83b9f",
         "title": "WHITE",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#d83b9f"
@@ -358,6 +366,7 @@ export const CATALOG = {
         "lume": "#3e4b85",
         "print": "#ef5f2c",
         "title": "NAVY",
+        "pattern": "grid",
         "line": "AUTOMATIC",
         "foot": "STUDIO",
         "second": "#ef5f2c"
