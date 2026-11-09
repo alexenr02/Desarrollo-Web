@@ -219,6 +219,8 @@ export function createWatch(canvas) {
     mats.bezel.clearcoatRoughness = THREE.MathUtils.lerp(0.3, 0.05, watch.ceramic);
     mats.tick.color.copy(current.bezel).lerp(new THREE.Color('#f4f1ea'), 0.62);
     mats.frame.color.copy(current.frame);
+    mats.frame.roughness = watch.dialLook.frameRough ?? 0.28;
+    mats.frame.clearcoat = watch.dialLook.frameCoat ?? 0.2;
     mats.lume.color.copy(current.lume);
     mats.lume.emissive.copy(current.lume);
     mats.lume.emissiveIntensity = THREE.MathUtils.lerp(0.15, 2.8, night);
@@ -414,8 +416,11 @@ function buildCase(spec, mats) {
   const body = new THREE.Mesh(extrude(caseOutline(spec), 11), mats.brushed);
   group.add(body);
 
-  // The colored insert stays a ring around the dial. The case body around it stays metal.
-  const bezel = new THREE.Mesh(extrude(ringShape(spec.bezelOuter, spec.bezelInner), 2.3), mats.bezel);
+  // Octagon uses the case metal for the bezel. The other shapes use the insert color.
+  const bezelOutline = spec.kind === 'polygon'
+    ? polygonRing(spec.sides, spec.bezelOuter, spec.bezelInner)
+    : ringShape(spec.bezelOuter, spec.bezelInner);
+  const bezel = new THREE.Mesh(extrude(bezelOutline, 2.3), spec.bezelFollowsCase ? mats.brushed : mats.bezel);
   bezel.position.z = 5.6;
   group.add(bezel);
 
@@ -605,6 +610,7 @@ function buildRubber(rubberMat, metalMat, start) {
 
 function caseOutline(spec) {
   if (spec.kind === 'circle') return ringShape(spec.radius, spec.opening);
+  if (spec.kind === 'polygon') return polygonRing(spec.sides, spec.radius, spec.opening);
   const shape = roundedRect(spec.width, spec.height, spec.corner);
   const hole = new THREE.Path();
   hole.absarc(0, 0, spec.opening, 0, Math.PI * 2, true);
@@ -687,6 +693,24 @@ function extrude(shape, depth) {
   geo.translate(0, 0, -depth / 2);
   geo.computeVertexNormals();
   return geo;
+}
+
+function polygonRing(sides, outer, inner) {
+  const shape = new THREE.Shape();
+  // Start mid-edge so the octagon has a flat at 12, 3, 6, and 9.
+  const start = -Math.PI / 2 + Math.PI / sides;
+  for (let i = 0; i < sides; i++) {
+    const angle = start + (i / sides) * Math.PI * 2;
+    const x = Math.cos(angle) * outer;
+    const y = Math.sin(angle) * outer;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  const hole = new THREE.Path();
+  hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
+  shape.holes.push(hole);
+  return shape;
 }
 
 function ringShape(outer, inner) {

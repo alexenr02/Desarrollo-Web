@@ -38,7 +38,7 @@ The model file is not a plain `.glb` on that host. Treat it as their asset. This
 | Bezel | Colour tints the insert. `aluminium` stays metallic. `ceramic` sets metalness to 0 and raises clearcoat. |
 | Dial | `top` / `bottom` repaint a gradient texture. `frame` colors indices and hands. `lume` and `print` color the glowing plots and the text. A `sub` block shows the small seconds dial. |
 | Strap | No `rubber` colour means the steel bracelet. A `rubber` hex hides the bracelet and tints the rubber mesh. |
-| Shape | Two case groups. Only the selected one is visible. The dial, hands, and movement stay shared. |
+| Shape | One case group per family (octagon, diver, chrono). Only the selected group is visible. Dials and bezels are filtered to that family. |
 
 Colour and roughness lerp for about half a second. The hash is updated with `history.replaceState`, so the iframe does not reload.
 
@@ -66,10 +66,10 @@ The dial print is a 2048 canvas in `createWatch` (`dialCanvas.width`). `paintDia
 
 | Field | Meaning |
 | --- | --- |
-| `kind` | `circle` uses `radius`. `rounded` uses `width`, `height`, and `corner`. |
+| `kind` | `circle` uses `radius`. `polygon` uses `sides` and `radius`, with a flat at 12, 3, 6, and 9. `rounded` uses `width`, `height`, and `corner`. |
 | `opening` | Radius of the round hole the dial sits in. |
-| `bezelOuter` / `bezelInner` | The colored insert ring. |
+| `bezelOuter` / `bezelInner` | The insert. A polygon case uses a matching polygon ring. `bezelFollowsCase` paints that ring with the case metal and hides the bezel picker. |
 | `lugReach` | How far the lugs sit from the center. The strap starts just past this. |
 | `crownShift` | Extra push on the crown when the case is wider than the round one. |
 
-`tonneau` is the example: a narrower body, taller than it is wide, with a larger corner radius. The dial, hands, and movement are shared, so a new outline does not need a new face.
+`octagon` is the eight-sided case. `diver` and `chrono` are circles with their own dial families. The dial, hands, and movement are shared, so a new outline does not need a new face. A dial needs a `family` that matches the shape, or the chip list will not show it.
