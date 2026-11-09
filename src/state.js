@@ -67,7 +67,7 @@ export function hashFromState(state) {
 export function describe(state) {
   const look = resolveLook(CATALOG, state);
   const bits = [
-    look.shapeId === 'round' ? 'Round' : 'Cushion',
+    byId(CATALOG.shapes, look.shapeId).name,
     look.metal.name,
     look.finishId,
     `${look.bezel.name} ${look.bezel.material}`,

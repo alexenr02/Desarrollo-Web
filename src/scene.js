@@ -50,15 +50,16 @@ export function createWatch(canvas) {
   scene.add(parts.root);
 
   const dialCanvas = document.createElement('canvas');
-  dialCanvas.width = dialCanvas.height = 1024;
+  // 2048 is the dial print. Raise this for a closer crop; the paint stays proportional.
+  dialCanvas.width = dialCanvas.height = 2048;
   const dialMap = new THREE.CanvasTexture(dialCanvas);
   dialMap.colorSpace = THREE.SRGBColorSpace;
-  dialMap.anisotropy = 8;
+  dialMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
   mats.dial.map = dialMap;
 
   const dateCanvas = document.createElement('canvas');
-  dateCanvas.width = 160;
-  dateCanvas.height = 120;
+  dateCanvas.width = 512;
+  dateCanvas.height = 384;
   paintDate(dateCanvas);
   const dateMap = new THREE.CanvasTexture(dateCanvas);
   dateMap.colorSpace = THREE.SRGBColorSpace;
@@ -133,9 +134,8 @@ export function createWatch(canvas) {
 
   function apply(state, { immediate = false } = {}) {
     const look = resolveLook(CATALOG, state);
-    parts.round.visible = look.shapeId === 'round';
-    parts.cushion.visible = look.shapeId === 'cushion';
-    for (const caseGroup of [parts.round, parts.cushion]) {
+    for (const [id, caseGroup] of Object.entries(parts.cases)) {
+      caseGroup.visible = id === look.shapeId;
       caseGroup.userData.bracelet.visible = caseGroup.visible && look.showBracelet;
       caseGroup.userData.rubber.visible = caseGroup.visible && !look.showBracelet;
     }
@@ -383,10 +383,13 @@ function createMaterials(brushMap) {
 
 function buildWatch(mats) {
   const root = new THREE.Group();
-  const round = buildCase('round', mats);
-  const cushion = buildCase('cushion', mats);
-  cushion.visible = false;
-  root.add(round, cushion);
+  const cases = {};
+  for (const spec of CATALOG.shapes) {
+    const group = buildCase(spec, mats);
+    group.visible = spec.id === CATALOG.shapes[0].id;
+    cases[spec.id] = group;
+    root.add(group);
+  }
 
   const face = buildFace(mats);
   root.add(face.group);
@@ -396,8 +399,7 @@ function buildWatch(mats) {
 
   return {
     root,
-    round,
-    cushion,
+    cases,
     subdial: face.subdial,
     subHand: face.subHand,
     hands: face.hands,
@@ -407,44 +409,37 @@ function buildWatch(mats) {
   };
 }
 
-function buildCase(shape, mats) {
+function buildCase(spec, mats) {
   const group = new THREE.Group();
-  const depth = 11;
-  // Cushion is a tall rounded square with a round opening, so it does not read as a second circle.
-  const shape2d = shape === 'round' ? ringShape(20.2, 16.15) : cushionRing(16.15);
-  const body = new THREE.Mesh(extrude(shape2d, depth), mats.brushed);
+  const body = new THREE.Mesh(extrude(caseOutline(spec), 11), mats.brushed);
   group.add(body);
 
-  // The colored insert stays a ring around the dial. The cushion body around it stays metal.
-  const bezelShape = shape === 'round' ? ringShape(20.4, 16.35) : ringShape(19.0, 16.35);
-  const bezel = new THREE.Mesh(extrude(bezelShape, 2.3), mats.bezel);
+  // The colored insert stays a ring around the dial. The case body around it stays metal.
+  const bezel = new THREE.Mesh(extrude(ringShape(spec.bezelOuter, spec.bezelInner), 2.3), mats.bezel);
   bezel.position.z = 5.6;
   group.add(bezel);
 
-  const lip = new THREE.Mesh(
-    new THREE.TorusGeometry(shape === 'round' ? 16.2 : 15.4, 0.45, 10, 64),
-    mats.polished,
-  );
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(spec.opening + 0.08, 0.42, 10, 64), mats.polished);
   lip.position.z = 5.15;
   group.add(lip);
 
-  const reach = shape === 'round' ? 19.2 : 24.6;
-  addLugs(group, mats.brushed, reach);
-  addTicks(group, 18.15, 7.15, mats.tick);
+  addLugs(group, mats.brushed, spec.lugReach);
+  addTicks(group, (spec.bezelOuter + spec.bezelInner) / 2, 7.15, mats.tick);
 
   const crown = makeCrown(mats.brushed, mats.polished);
-  crown.position.x = shape === 'round' ? 0 : 2.6;
+  crown.position.x = spec.crownShift || 0;
   group.add(crown);
 
-  const bracelet = buildBracelet(mats.brushed, reach + 4.4);
-  const rubber = buildRubber(mats.rubber, mats.polished, reach + 4.4);
+  const strapStart = spec.lugReach + 5.3;
+  const bracelet = buildBracelet(mats.brushed, mats.polished, strapStart);
+  const rubber = buildRubber(mats.rubber, mats.polished, strapStart);
   rubber.visible = false;
   group.add(bracelet, rubber);
   group.userData.bracelet = bracelet;
   group.userData.rubber = rubber;
 
   // Open caseback. A glass disc here goes opaque in WebGL and hides the movement.
-  const backLip = new THREE.Mesh(new THREE.TorusGeometry(shape === 'round' ? 15.7 : 15.5, 0.42, 10, 48), mats.polished);
+  const backLip = new THREE.Mesh(new THREE.TorusGeometry(spec.opening - 0.35, 0.4, 10, 48), mats.polished);
   backLip.position.z = -5.7;
   group.add(backLip);
   return group;
@@ -452,7 +447,7 @@ function buildCase(shape, mats) {
 
 function buildFace(mats) {
   const group = new THREE.Group();
-  const dial = new THREE.Mesh(new THREE.CircleGeometry(15.15, 64), mats.dial);
+  const dial = new THREE.Mesh(new THREE.CircleGeometry(15.15, 128), mats.dial);
   dial.position.z = 4.55;
   group.add(dial);
 
@@ -543,17 +538,53 @@ function buildMovement(mats) {
   return { group, balance, rotor, wheel };
 }
 
-function buildBracelet(material, start) {
+// Three-row bracelet. All rows share the case metal. The center row sits proud,
+// and a pin fills the gap. One geometry is reused, so a new size is one call.
+function buildBracelet(brushed, polished, start) {
   const group = new THREE.Group();
+  const outer = roundedLinkGeometry(4.55, 2.55, 2.45, 1.05);
+  const center = roundedLinkGeometry(5.15, 2.45, 2.15, 0.95);
+  const pin = new THREE.CylinderGeometry(0.22, 0.22, 14.8, 10);
+  pin.rotateZ(Math.PI / 2);
+  const pitch = 3.55;
+
   for (const dir of [-1, 1]) {
-    for (let i = 0; i < 6; i++) {
-      const width = 16.2 - i * 0.65;
-      const link = new THREE.Mesh(new THREE.BoxGeometry(width, 3.05, 2.35), material);
-      link.position.set(0, dir * (start + i * 3.35), -0.3 - i * 0.1);
-      group.add(link);
+    for (let i = 0; i < 7; i++) {
+      const row = new THREE.Group();
+      const y = start + i * pitch;
+      row.position.set(0, dir * y, -0.02 - i * 0.18);
+      row.rotation.x = dir * i * 0.05;
+
+      const left = new THREE.Mesh(outer, brushed);
+      left.position.x = -5.15;
+      const right = new THREE.Mesh(outer, brushed);
+      right.position.x = 5.15;
+      // Proud of the outer rows, so the center link catches a highlight of its own.
+      const mid = new THREE.Mesh(center, brushed);
+      mid.position.z = 0.22;
+      row.add(left, mid, right);
+
+      const joint = new THREE.Mesh(pin, polished);
+      joint.position.set(0, -pitch / 2, 0);
+      row.add(joint);
+      group.add(row);
     }
   }
   return group;
+}
+
+function roundedLinkGeometry(width, height, depth, radius) {
+  const geo = new THREE.ExtrudeGeometry(roundedRect(width, height, radius), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.28,
+    bevelSize: 0.32,
+    bevelSegments: 3,
+    curveSegments: 10,
+  });
+  geo.translate(0, 0, -depth / 2);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 function buildRubber(rubberMat, metalMat, start) {
@@ -572,10 +603,11 @@ function buildRubber(rubberMat, metalMat, start) {
   return group;
 }
 
-function cushionRing(innerRadius, pad = 0) {
-  const shape = roundedRect(43 + pad * 2, 48 + pad * 2, 8 + pad);
+function caseOutline(spec) {
+  if (spec.kind === 'circle') return ringShape(spec.radius, spec.opening);
+  const shape = roundedRect(spec.width, spec.height, spec.corner);
   const hole = new THREE.Path();
-  hole.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+  hole.absarc(0, 0, spec.opening, 0, Math.PI * 2, true);
   shape.holes.push(hole);
   return shape;
 }

@@ -52,4 +52,24 @@ Night mode turns down the environment and key light and raises the lume material
 - `src/main.js` — chips, night, movement, and the hash.
 - `test/resolve.test.js` — checks finish roughness, ceramic versus aluminium, and the strap swap.
 
-To add a dial, append an object under `dials` with a unique `id`, a `swatch`, and a `look`. No mesh edit is required. A new case *shape* is the exception: add a group in `buildCase` and a `shapes` entry, then show that group from `apply`.
+To add a dial, append an object under `dials` with a unique `id`, a `swatch`, and a `look`. No mesh edit is required.
+
+## Sharper bracelet and dial
+
+The bracelet in `buildBracelet` is a three-row link. Every row uses the case metal, the center link sits proud of the outer two, and a pin fills the gap. Each link is a rounded extrusion shared across the bracelet, so the edges catch light instead of reading as flat slabs. Change `roundedLinkGeometry` sizes, `pitch`, or the row count there.
+
+The dial print is a 2048 canvas in `createWatch` (`dialCanvas.width`). `paintDial` draws the sunburst, the minute track, and the words in units of that width, so raising the canvas (3072, 4096) stays sharp when you crop in. `anisotropy` is set to the GPU maximum so the texture holds up at an angle. Indices and hands stay meshes; they are what throws the shadow and the lume.
+
+## Adding a case shape
+
+`shapes` in `src/config.js` is the whole definition. `buildCase` reads it and builds one group per entry. Copy a block and change the numbers:
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `circle` uses `radius`. `rounded` uses `width`, `height`, and `corner`. |
+| `opening` | Radius of the round hole the dial sits in. |
+| `bezelOuter` / `bezelInner` | The colored insert ring. |
+| `lugReach` | How far the lugs sit from the center. The strap starts just past this. |
+| `crownShift` | Extra push on the crown when the case is wider than the round one. |
+
+`tonneau` is the example: a narrower body, taller than it is wide, with a larger corner radius. The dial, hands, and movement are shared, so a new outline does not need a new face.

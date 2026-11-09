@@ -27,10 +27,12 @@ export function brushedNormalTexture() {
   return texture;
 }
 
-// Dial ground, minute track, and words. Indices and hands are real meshes.
+// Printed dial. Indices and hands stay real meshes so they catch the light.
+// The canvas is 2048px; keep new strokes proportional to `w` so they stay sharp.
 export function paintDial(canvas, top, bottom, look) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
+  const c = w / 2;
   ctx.clearRect(0, 0, w, w);
 
   const gradient = ctx.createLinearGradient(0, 0, 0, w);
@@ -39,30 +41,76 @@ export function paintDial(canvas, top, bottom, look) {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, w, w);
 
+  // Sunburst. Alternating rays read as brushed lacquer instead of a flat fill.
   ctx.save();
-  ctx.translate(w / 2, w / 2);
+  ctx.translate(c, c);
+  ctx.globalCompositeOperation = 'soft-light';
+  const rays = 160;
+  for (let i = 0; i < rays; i++) {
+    ctx.rotate((Math.PI * 2) / rays);
+    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+    ctx.fillRect(-w * 0.0014, 0, w * 0.0028, c);
+  }
+  ctx.restore();
+
+  const vignette = ctx.createRadialGradient(c, c, c * 0.42, c, c, c * 0.72);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.22)');
+  ctx.fillStyle = vignette;
+  ctx.beginPath();
+  ctx.arc(c, c, c, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(c, c);
   ctx.strokeStyle = look.print;
   ctx.lineCap = 'butt';
+  ctx.lineWidth = w * 0.0014;
+  ctx.beginPath();
+  ctx.arc(0, 0, w * 0.462, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, w * 0.398, 0, Math.PI * 2);
+  ctx.stroke();
   for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * Math.PI * 2 - Math.PI / 2;
-    const inner = w * (i % 5 === 0 ? 0.405 : 0.432);
-    const outer = w * 0.455;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
-    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
-    ctx.lineWidth = i % 5 === 0 ? 5 : 2;
-    ctx.stroke();
+    const major = i % 5 === 0;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const tx = -dy;
+    const ty = dx;
+    const outer = w * 0.458;
+    const inner = w * (major ? 0.404 : 0.44);
+    ctx.lineWidth = major ? w * 0.0034 : w * 0.00135;
+    // Five-minute marks are a railroad pair, the way a printed dial is engraved.
+    const offsets = major ? [-w * 0.0042, w * 0.0042] : [0];
+    for (const off of offsets) {
+      ctx.beginPath();
+      ctx.moveTo(dx * inner + tx * off, dy * inner + ty * off);
+      ctx.lineTo(dx * outer + tx * off, dy * outer + ty * off);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 
   ctx.fillStyle = look.print;
   ctx.textAlign = 'center';
-  ctx.font = '600 64px Georgia, "Times New Roman", serif';
-  ctx.fillText(look.title, w / 2, w * 0.34);
-  ctx.font = '500 26px "Segoe UI", sans-serif';
-  ctx.fillText(look.line, w / 2, w * 0.4);
-  ctx.font = '500 22px "Segoe UI", sans-serif';
-  ctx.fillText(look.foot, w / 2, w * 0.72);
+  ctx.textBaseline = 'middle';
+  drawTracked(ctx, look.title, c, w * 0.325, w * 0.052, '600', 'Georgia, "Times New Roman", serif', 0.22);
+  drawTracked(ctx, look.line, c, w * 0.385, w * 0.02, '500', '"Segoe UI", sans-serif', 0.34);
+  drawTracked(ctx, look.foot, c, w * 0.7, w * 0.018, '500', '"Segoe UI", sans-serif', 0.42);
+}
+
+function drawTracked(ctx, text, x, y, size, weight, family, trackingEm) {
+  ctx.font = `${weight} ${size}px ${family}`;
+  const gap = size * trackingEm;
+  const widths = [...text].map((ch) => ctx.measureText(ch).width);
+  const total = widths.reduce((sum, width) => sum + width, 0) + gap * Math.max(0, text.length - 1);
+  let cursor = x - total / 2;
+  for (let i = 0; i < text.length; i++) {
+    ctx.fillText(text[i], cursor + widths[i] / 2, y);
+    cursor += widths[i] + gap;
+  }
 }
 
 export function paintDate(canvas) {
@@ -71,8 +119,8 @@ export function paintDate(canvas) {
   ctx.fillStyle = '#f7f4ee';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#1a1a1a';
-  ctx.font = '600 64px "Segoe UI", sans-serif';
+  ctx.font = `600 ${Math.round(canvas.height * 0.62)}px "Segoe UI", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(day, canvas.width / 2, canvas.height / 2 + 2);
+  ctx.fillText(day, canvas.width / 2, canvas.height / 2 + canvas.height * 0.02);
 }

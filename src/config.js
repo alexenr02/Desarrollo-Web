@@ -2,9 +2,48 @@
 // Adding a finish is a new object here; the meshes stay the same.
 
 export const CATALOG = {
+  // A case shape is measurements, not a new scene.
+  // kind "circle" uses radius. kind "rounded" uses width, height, and corner.
+  // opening is the round hole the dial sits in. lugReach is where the strap starts.
+  // crownShift pushes the crown out when the case is wider than the round one.
   shapes: [
-    { id: 'round', name: 'Round' },
-    { id: 'cushion', name: 'Cushion' },
+    {
+      id: 'round',
+      name: 'Round',
+      kind: 'circle',
+      radius: 20.2,
+      opening: 16.15,
+      bezelOuter: 20.4,
+      bezelInner: 16.35,
+      lugReach: 19.2,
+      crownShift: 0,
+    },
+    {
+      id: 'cushion',
+      name: 'Cushion',
+      kind: 'rounded',
+      width: 43,
+      height: 48,
+      corner: 8,
+      opening: 16.15,
+      bezelOuter: 19,
+      bezelInner: 16.35,
+      lugReach: 24.6,
+      crownShift: 2.6,
+    },
+    {
+      id: 'tonneau',
+      name: 'Tonneau',
+      kind: 'rounded',
+      width: 36,
+      height: 46,
+      corner: 14,
+      opening: 15.5,
+      bezelOuter: 18.2,
+      bezelInner: 15.7,
+      lugReach: 23.2,
+      crownShift: 0,
+    },
   ],
   finishes: [
     { id: 'brushed', name: 'Brushed' },

@@ -36,6 +36,22 @@ test('polished gold with a rubber strap switches finish and strap mesh', () => {
   assert.equal(look.dial.look.sub, undefined);
 });
 
+test('every case shape carries the measurements the mesh builder reads', () => {
+  const ids = CATALOG.shapes.map((shape) => shape.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const shape of CATALOG.shapes) {
+    assert.ok(shape.opening > 10, shape.id);
+    assert.ok(shape.lugReach > shape.opening, shape.id);
+    assert.ok(shape.bezelOuter > shape.bezelInner, shape.id);
+    if (shape.kind === 'circle') assert.ok(shape.radius > shape.opening, shape.id);
+    if (shape.kind === 'rounded') {
+      assert.ok(shape.width > shape.opening * 2, shape.id);
+      assert.ok(shape.height > shape.opening * 2, shape.id);
+      assert.ok(shape.corner >= 0, shape.id);
+    }
+  }
+});
+
 test('a shared hash restores known ids and drops unknown ones', () => {
   const state = stateFromHash('#metal=nope&dial=harbor&night=1&view=back&bezel=alu-green');
   assert.equal(state.metal, 'steel');
