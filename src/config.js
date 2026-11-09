@@ -1,0 +1,147 @@
+// Original option catalog. Each entry's `look` is what the 3D scene reads.
+// Adding a finish is a new object here; the meshes stay the same.
+
+export const CATALOG = {
+  shapes: [
+    { id: 'round', name: 'Round' },
+    { id: 'cushion', name: 'Cushion' },
+  ],
+  finishes: [
+    { id: 'brushed', name: 'Brushed' },
+    { id: 'polished', name: 'Polished' },
+  ],
+  metals: [
+    {
+      id: 'steel',
+      name: 'Steel',
+      swatch: '#c9ccd1',
+      look: { metal: '#c5c8cc', polished: '#e7e9eb', satin: 0.36, gloss: 0.07 },
+    },
+    {
+      id: 'graphite',
+      name: 'Graphite',
+      swatch: '#2c2e32',
+      look: { metal: '#3a3c40', polished: '#51545a', satin: 0.4, gloss: 0.12 },
+    },
+    {
+      id: 'gold',
+      name: 'Gold',
+      swatch: '#c6a15b',
+      look: { metal: '#b8924c', polished: '#f0ddb0', satin: 0.32, gloss: 0.06 },
+    },
+    {
+      id: 'copper',
+      name: 'Copper',
+      swatch: '#b46a45',
+      look: { metal: '#a8643e', polished: '#e8b894', satin: 0.34, gloss: 0.07 },
+    },
+  ],
+  bezels: [
+    { id: 'alu-navy', name: 'Navy', material: 'aluminium', colour: '#1c3358' },
+    { id: 'alu-black', name: 'Black', material: 'aluminium', colour: '#191b1e' },
+    { id: 'alu-green', name: 'Green', material: 'aluminium', colour: '#1d3b2c' },
+    { id: 'cer-sand', name: 'Sand', material: 'ceramic', colour: '#f3efe6' },
+    { id: 'cer-ink', name: 'Ink', material: 'ceramic', colour: '#141518' },
+    { id: 'cer-blue', name: 'Blue', material: 'ceramic', colour: '#1a3f86' },
+  ],
+  dials: [
+    {
+      id: 'ink',
+      name: 'Ink',
+      swatch: '#2a2c31',
+      look: {
+        top: '#3e4148',
+        bottom: '#141518',
+        frame: '#d7d8da',
+        lume: '#d5e3c4',
+        print: '#f2f0ea',
+        second: '#d5e3c4',
+        title: 'FIELD',
+        line: 'AUTOMATIC',
+        foot: 'STUDIO',
+      },
+    },
+    {
+      id: 'harbor',
+      name: 'Harbor',
+      swatch: '#1d3d66',
+      look: {
+        top: '#3d6494',
+        bottom: '#122033',
+        frame: '#f0ddb0',
+        lume: '#d5e0cf',
+        print: '#f7f4ee',
+        second: '#f0ddb0',
+        title: 'HARBOR',
+        line: '200 M',
+        foot: 'NORTH',
+        sub: { colour: '#0e1a2b', hand: '#f0ddb0' },
+      },
+    },
+    {
+      id: 'kelp',
+      name: 'Kelp',
+      swatch: '#1e3a2c',
+      look: {
+        top: '#3f6b4a',
+        bottom: '#122016',
+        frame: '#efe8d8',
+        lume: '#e3f0c4',
+        print: '#f4f7f0',
+        second: '#e3f0c4',
+        title: 'CEDAR',
+        line: 'FIELD',
+        foot: '42',
+      },
+    },
+    {
+      id: 'sand',
+      name: 'Sand',
+      swatch: '#e6d7bf',
+      look: {
+        top: '#f6ecda',
+        bottom: '#c9b48f',
+        frame: '#3a342e',
+        lume: '#f4efc0',
+        print: '#2b2723',
+        second: '#8d3b2c',
+        title: 'PAPER',
+        line: 'MANUAL',
+        foot: 'STUDIO',
+      },
+    },
+    {
+      id: 'ember',
+      name: 'Ember',
+      swatch: '#6e2c2a',
+      look: {
+        top: '#8d4338',
+        bottom: '#2a1214',
+        frame: '#f3dcb8',
+        lume: '#f6e6bc',
+        print: '#fbf4ec',
+        second: '#f3dcb8',
+        title: 'KILN',
+        line: 'GMT',
+        foot: 'HAND',
+      },
+    },
+  ],
+  straps: [
+    { id: 'bracelet', name: 'Bracelet', swatch: 'linear-gradient(135deg,#f2f2f2,#8e949b)' },
+    { id: 'rubber-black', name: 'Black rubber', swatch: '#1b1c1e', rubber: '#2a2c30' },
+    { id: 'rubber-navy', name: 'Navy rubber', swatch: '#1a2744', rubber: '#243656' },
+    { id: 'rubber-olive', name: 'Olive rubber', swatch: '#3d4630', rubber: '#505a3c' },
+  ],
+};
+
+export const DEFAULT_STATE = {
+  shape: 'round',
+  finish: 'brushed',
+  metal: 'steel',
+  bezel: 'cer-blue',
+  dial: 'ink',
+  strap: 'bracelet',
+  night: false,
+  view: 'front',
+};
