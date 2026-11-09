@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Field watch studio</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%231c1e1b' stroke-width='1.4'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <p class="mark">Field studio</p>
+        <h1>Design the watch</h1>
+      </header>
+      <div class="layout">
+        <div class="stage" id="stage">
+          <canvas id="view"></canvas>
+          <p class="hint">Drag to turn. Scroll to zoom.</p>
+          <div class="stage-actions">
+            <button type="button" id="night" aria-pressed="false">Night</button>
+            <button type="button" id="movement" aria-pressed="false">Movement</button>
+          </div>
+        </div>
+        <aside id="panel"></aside>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
